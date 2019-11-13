@@ -1,6 +1,6 @@
-# CloudFormation Recipes
+# Cloud Formation Recipes
 
-A collection of useful AWS CloudFormation recipes.
+A collection of useful AWS Cloud Formation recipes.
 
 If an example uses the region `us-east-1` this will usually be because the stack will only work in that region. CloudFront for example can only find ACM certificates in this region.
 
@@ -18,9 +18,6 @@ $ aws cloudformation create-stack \
   --parameters \
     ParameterKey=DomainName,ParameterValue=${DOMAIN} \
   --region us-east-1
-{
-    "StackId": "arn:aws:cloudformation:us-east-1:666:stack/ssl-hosting-example-org/3c189a20-0596-11ea-ab90-121fa666fe9a"
-}
 ```
 
 ## S3 HTTPS website
@@ -39,7 +36,4 @@ $ aws cloudformation create-stack \
     ParameterKey=DomainName,ParameterValue=${DOMAIN} \
     ParameterKey=Aliases,ParameterValue=${ALIASES} \
   --region us-east-1
-{
-    "StackId": "arn:aws:cloudformation:us-east-1:666:stack/s3-https-website-example-org/3c189a20-0596-11ea-ab90-121fa666fe9a"
-}
 ```
