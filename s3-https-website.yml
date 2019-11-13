@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Simple SSL S3 website
+Parameters:
+  DomainName:
+    Description: The website domain name
+    Type: String
+    Default: example.org
+
+  Aliases:
+    Type: CommaDelimitedList
+    Description: A comma separated list of domain names to add to the SSL certificate
+  
+Resources:
+  Certificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref DomainName
+      ValidationMethod: DNS
+      SubjectAlternativeNames: !Ref Aliases
+
+  Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${DomainName}-${AWS::AccountId}"
+      AccessControl: "PublicRead"
+      WebsiteConfiguration:
+        IndexDocument: "index.html"
+
+  CloudFront:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Aliases: !Split
+          - ","
+          - !Join
+            - ","
+            - - !Ref DomainName
+              - !Join [",", !Ref Aliases]
+        Enabled: True
+        Origins:
+          - DomainName: !Select
+              - 1
+              - !Split ["//", !GetAtt [Bucket, WebsiteURL]]
+            Id: origin
+            CustomOriginConfig:
+              OriginProtocolPolicy: http-only
+        DefaultCacheBehavior:
+          TargetOriginId: origin
+          DefaultTTL: 5
+          MaxTTL: 30
+          ForwardedValues:
+            QueryString: false
+          ViewerProtocolPolicy: redirect-to-https
+        ViewerCertificate:
+          AcmCertificateArn: !Ref Certificate
+          SslSupportMethod: sni-only
+
+Outputs:
+  CloudFrontDomainName:
+    Description: The CloudFront domain name
+    Value: !GetAtt [CloudFront, DomainName]
+    Export:
+        Name: "CloudFrontDomainName"

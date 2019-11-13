@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: A simple apex domain redirector leveraging the redirect all requests functionality in S3 websites.
+Parameters:
+  DomainName:
+    Description: The apex domain to redirect
+    Type: String
+    Default: example.org
+  
+  HostedZoneId:
+    Description: |
+      The CloudFront distribution DNS hosted zone ID, see https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-route53-aliastarget.html#cfn-route53-aliastarget-hostedzoneid
+      overloading this would be pointless but it's nicer to have a parameter than a hardcoded value
+    Type: String 
+    Default: Z2FDTNDATAQYW2
+
+Resources:
+  Certificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref DomainName
+      ValidationMethod: DNS
+
+  Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${DomainName}-${AWS::AccountId}"
+      WebsiteConfiguration:
+        RedirectAllRequestsTo:
+          HostName: !Sub "www.${DomainName}"
+          Protocol: https
+
+  RecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties: 
+      AliasTarget: 
+        DNSName: !GetAtt [CloudFront, DomainName]
+        EvaluateTargetHealth: true
+        HostedZoneId: !Ref HostedZoneId
+
+      Name: !Ref DomainName
+      Type: "A"
+      HostedZoneName: !Sub "${DomainName}." # Note trailing "."
+
+  CloudFront:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Ref DomainName
+        Enabled: True
+        Origins:
+          - DomainName: !Select
+              - 1
+              - !Split ["//", !GetAtt [Bucket, WebsiteURL]]
+            Id: origin
+            CustomOriginConfig:
+              OriginProtocolPolicy: http-only
+        DefaultCacheBehavior:
+          TargetOriginId: origin
+          DefaultTTL: 5
+          MaxTTL: 30
+          ForwardedValues:
+            QueryString: false
+          ViewerProtocolPolicy: redirect-to-https
+        ViewerCertificate:
+          AcmCertificateArn: !Ref Certificate
+          SslSupportMethod: sni-only
