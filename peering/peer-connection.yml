@@ -1,0 +1,68 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Creates resources required for migration
+Parameters:
+  VpcId:
+    Description: The VPC Id 
+    Type: String
+    Default: vpc-123
+
+  PeerVpcId:
+    Description: The peer VPC Id 
+    Type: String
+    Default: vpc-666
+
+  PeerOwnerId:
+    Description: The peer account Id
+    Type: String
+    Default: "666"
+
+  EnvironmentName:
+    Description: An environment name that will be prefixed to resource names
+    Type: String
+    Default: stage
+
+  PrivateCidrRange:
+    Description: The CIDR for the private network
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 10.129.66.0/24
+
+  PeerRoleArn: 
+    Description: The ARN of the peer role
+    Type: String
+    Default: arn:aws:iam::666:role/peering-assumable-role-PeerRole
+
+Resources:
+
+  PeeringConnection:
+    Type: AWS::EC2::VPCPeeringConnection
+    Properties:
+      PeerRoleArn: !Ref PeerRoleArn
+      VpcId: !Ref VpcId
+      PeerVpcId: !Ref PeerVpcId
+      PeerOwnerId: !Ref PeerOwnerId
+
+  PeeringRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VpcId
+
+  PeeringRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      RouteTableId: !Ref PeeringRouteTable
+      VpcPeeringConnectionId: !Ref PeeringConnection
+
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VpcId
+      CidrBlock: !Ref PrivateCidrRange
+ 
+  SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PeeringRouteTable

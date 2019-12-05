@@ -37,3 +37,34 @@ $ aws cloudformation create-stack \
     ParameterKey=Aliases,ParameterValue=${ALIASES} \
   --region us-east-1
 ```
+
+## [Cross account] VPC Peering
+
+Creates the peering role in the peer account and the `PeeringConnection` in the accepter account. These don't have to be cross account and will work just as well across different VPCs.
+
+### Example
+
+```sh
+# Add assume role to peer account
+$ aws cloudformation create-stack \
+  --stack-name migration-assumable-role \
+  --capabilities CAPABILITY_IAM \
+  --template-body file://peering/cross-account-access-role.yml \
+  --parameters \
+    ParameterKey=PeerRequesterAccountId,ParameterValue=666 \
+  --profile peer
+
+# Add peering connection
+$ aws cloudformation create-stack \
+  --stack-name peer-connection \
+  --template-body file://peering/peer-connection.yml \
+  --parameters \
+    ParameterKey=PeerRoleArn,ParameterValue=arn:aws:iam::666:role/peering-assumable-role-PeerRole-1E28H26WGHOQ1 \
+    ParameterKey=VpcId,ParameterValue=vcp-666 \
+    ParameterKey=PeerVpcId,ParameterValue=vcp-123 \
+  --profile accepter
+```
+
+### Troubleshooting
+
+See the [AWS docs](https://aws.amazon.com/premiumsupport/knowledge-center/cloudformation-vpc-peering-error/).
